@@ -1,187 +1,135 @@
-# Функция для размножения ключа до длины сообщенияAdd commentMore actions
-def extend_key(key, length):
-    if not key:
-        raise ValueError("Ключ не может быть пустым")
-    return (key * (length // len(key) + 1))[:length]
+import osAdd commentMore actions
+import base64
+import argparse
 
-# Функция шифрования шифром ВиженераAdd commentMore actions
-def encrypt(key, message, alphabet_mode=False):
-    """
-    Шифрует сообщение с помощью шифра Виженера.
-    
-    Args:
-        key: Ключ шифрования
-        message: Сообщение для шифрования
-        alphabet_mode: Если True, использует алфавитный режим для латиницы/кириллицы,
-                       иначе использует обобщенный Юникод-режим
-    """
-    if not message:
-        return ""
-        
-    # Размножаем ключ до длины сообщения
-    extended_key = extend_key(key, len(message))
-    encrypted_chars = []
-    
-    if not alphabet_mode:
-        # Обобщенный режим для всех символов Юникода
-        for m_char, k_char in zip(message, extended_key):
-            encrypted_char = chr((ord(m_char) + ord(k_char)) % 65536)
-            encrypted_chars.append(encrypted_char)
-    else:
-        # Алфавитный режим для латиницы и кириллицы
-        key_idx = 0
-        for char in message:
-            if 'A' <= char <= 'Z':
-                # Для английских заглавных букв
-                shift = ord(extended_key[key_idx].upper()) % 26
-                if 'A' <= extended_key[key_idx].upper() <= 'Z':
-                    shift = ord(extended_key[key_idx].upper()) - ord('A')
-                encrypted_char = chr((ord(char) - ord('A') + shift) % 26 + ord('A'))
-                key_idx += 1
-            elif 'a' <= char <= 'z':
-                # Для английских строчных букв
-                shift = ord(extended_key[key_idx].upper()) % 26
-                if 'A' <= extended_key[key_idx].upper() <= 'Z':
-                    shift = ord(extended_key[key_idx].upper()) - ord('A')
-                encrypted_char = chr((ord(char) - ord('a') + shift) % 26 + ord('a'))
-                key_idx += 1
-            elif 'А' <= char <= 'Я' or char == 'Ё':
-                # Для русских заглавных букв
-                char_code = ord(char) - ord('А') if char != 'Ё' else 6
-                key_char = extended_key[key_idx].upper()
-                key_code = ord(key_char) - ord('А') if key_char != 'Ё' and 'А' <= key_char <= 'Я' else 0
-                new_code = (char_code + key_code) % 33
-                if new_code == 6:
-                    encrypted_char = 'Ё'
-                else:
-                    if new_code > 6:
-                        new_code -= 1
-                    encrypted_char = chr(new_code + ord('А'))
-                key_idx += 1
-            elif 'а' <= char <= 'я' or char == 'ё':
-                # Для русских строчных букв
-                char_code = ord(char) - ord('а') if char != 'ё' else 6
-                key_char = extended_key[key_idx].lower()
-                key_code = ord(key_char) - ord('а') if key_char != 'ё' and 'а' <= key_char <= 'я' else 0
-                new_code = (char_code + key_code) % 33
-                if new_code == 6:
-                    encrypted_char = 'ё'
-                else:
-                    if new_code > 6:
-                        new_code -= 1
-                    encrypted_char = chr(new_code + ord('а'))
-                key_idx += 1
-            else:
-                # Другие символы оставляем без изменений
-                encrypted_char = char
-            
-            encrypted_chars.append(encrypted_char)
+# Функция шифрования с использованием OTPAdd commentMore actions
+def encrypt(message, key):Add commentMore actions
+    # Преобразуем сообщение в байты
+    message_bytes = message.encode('utf-8')
 
-    return ''.join(encrypted_chars)
+if len(key) != len(message_bytes):Add commentMore actions
+        raise ValueError("Длина ключа должна совпадать с длиной сообщения.")
 
-# Функция дешифрования шифра ВиженераAdd commentMore actions
-def decrypt(key, ciphertext, alphabet_mode=False):
-    """
-    Дешифрует сообщение, зашифрованное шифром Виженера.
-    
-    Args:
-        key: Ключ шифрования
-        ciphertext: Зашифрованное сообщение
-        alphabet_mode: Если True, использует алфавитный режим для латиницы/кириллицы,
-                       иначе использует обобщенный Юникод-режим
-    """
-    if not ciphertext:
-        return ""
-        
-    # Размножаем ключ до длины шифротекста
-    extended_key = extend_key(key, len(ciphertext))
-    decrypted_chars = []
-    
-    if not alphabet_mode:
-        # Обобщенный режим для всех символов Юникода
-        for c_char, k_char in zip(ciphertext, extended_key):
-            decrypted_char = chr((ord(c_char) - ord(k_char)) % 65536)
-            decrypted_chars.append(decrypted_char)
-    else:
-        # Алфавитный режим для латиницы и кириллицы
-        key_idx = 0
-        for char in ciphertext:
-            if 'A' <= char <= 'Z':
-                # Для английских заглавных букв
-                shift = ord(extended_key[key_idx].upper()) % 26
-                if 'A' <= extended_key[key_idx].upper() <= 'Z':
-                    shift = ord(extended_key[key_idx].upper()) - ord('A')
-                decrypted_char = chr((ord(char) - ord('A') - shift) % 26 + ord('A'))
-                key_idx += 1
-            elif 'a' <= char <= 'z':
-                # Для английских строчных букв
-                shift = ord(extended_key[key_idx].upper()) % 26
-                if 'A' <= extended_key[key_idx].upper() <= 'Z':
-                    shift = ord(extended_key[key_idx].upper()) - ord('A')
-                decrypted_char = chr((ord(char) - ord('a') - shift) % 26 + ord('a'))
-                key_idx += 1
-            elif 'А' <= char <= 'Я' or char == 'Ё':
-                # Для русских заглавных букв
-                char_code = ord(char) - ord('А') if char != 'Ё' else 6
-                key_char = extended_key[key_idx].upper()
-                key_code = ord(key_char) - ord('А') if key_char != 'Ё' and 'А' <= key_char <= 'Я' else 0
-                new_code = (char_code - key_code) % 33
-                if new_code == 6:
-                    decrypted_char = 'Ё'
-                else:
-                    if new_code > 6:
-                        new_code -= 1
-                    decrypted_char = chr(new_code + ord('А'))
-                key_idx += 1
-            elif 'а' <= char <= 'я' or char == 'ё':
-                # Для русских строчных букв
-                char_code = ord(char) - ord('а') if char != 'ё' else 6
-                key_char = extended_key[key_idx].lower()
-                key_code = ord(key_char) - ord('а') if key_char != 'ё' and 'а' <= key_char <= 'я' else 0
-                new_code = (char_code - key_code) % 33
-                if new_code == 6:
-                    decrypted_char = 'ё'
-                else:
-                    if new_code > 6:
-                        new_code -= 1
-                    decrypted_char = chr(new_code + ord('а'))
-                key_idx += 1
-            else:
-                # Другие символы оставляем без изменений
-                decrypted_char = char
-            Add commentMore actions
-            decrypted_chars.append(decrypted_char)
+    # Применяем XOR между каждым байтом сообщения и ключа
+    encrypted_bytes = bytes([m ^ k for m, k in zip(message_bytes, key)])
+    return encrypted_bytes
 
-      return ''.join(decrypted_chars)
+# Функция дешифрования с использованием OTP
+def decrypt(ciphertext, key):
+    if len(key) != len(ciphertext):
+        raise ValueError("Длина ключа должна совпадать с длиной шифротекста.")
 
-# Основная часть программыAdd commentMore actions
-if __name__ == "__main__":
+    # Применяем XOR между каждым байтом шифротекста и ключа
+    decrypted_bytes = bytes([c ^ k for c, k in zip(ciphertext, key)])
+    # Декодируем байты в строку
+    try:
+        return decrypted_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        raise ValueError("Не удалось декодировать расшифрованный текст. Возможно, ключ или шифротекст повреждены.")
 
-     # Запрашиваем у пользователя ключ и текст для шифрованияAdd commentMore actions
-        key = input("Введите ключ для шифрования (строка): ")
-        if not key:
-            print("Ошибка: ключ не может быть пустым")
-            exit(1)
-
-message = input("Введите текст для шифрования: ")Add commentMore actions
-        
-        # Выбор режима шифрования
-        mode_choice = input("Использовать алфавитный режим? (да/нет, по умолчанию - нет): ").lower()
-        alphabet_mode = mode_choice in ('да', 'yes', 'y', 'д')
-        
-        # Шифруем текст
-        encrypted_text = encrypt(key, message, alphabet_mode)
-        print("\nЗашифрованный текст:\n", encrypted_text)
-        
-        # Дешифруем текст
-        decrypted_text = decrypt(key, encrypted_text, alphabet_mode)
-        print("\nРасшифрованный текст:\n", decrypted_text)
-        
-        # Проверка корректности
-        if decrypted_text == message:
-            print("\nПроверка пройдена: расшифрованный текст совпадает с исходным!")
-        else:
-            print("\nОшибка: расшифрованный текст не совпадает с исходным.")Add commentMore actions
-            
+# Функция для сохранения данных в файл
+def save_to_file(data, filename):
+    try:
+        with open(filename, 'wb') as f:
+            f.write(data)
+        return True
     except Exception as e:
-        print(f"Произошла ошибка: {e}")Add comment
+        print(f"Ошибка при сохранении файла: {e}")
+        return False
+
+# Функция для загрузки данных из файла
+def load_from_file(filename):
+    try:
+        with open(filename, 'rb') as f:
+            return f.read()
+    except Exception as e:
+        print(f"Ошибка при чтении файла: {e}")
+        return None
+
+# Основная часть программы
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Шифрование и дешифрование с использованием одноразового блокнота (OTP)')Add commentMore actions
+    parser.add_argument('--mode', choices=['encrypt', 'decrypt'], default='encrypt', help='Режим работы: шифрование или дешифрование')
+    parser.add_argument('--key-file', help='Файл для сохранения/загрузки ключа')
+    parser.add_argument('--message-file', help='Файл для сохранения/загрузки сообщения')
+    parser.add_argument('--ciphertext-file', help='Файл для сохранения/загрузки шифротекста')
+    args = parser.parse_args()
+
+    if args.mode == 'encrypt':Add commentMore actions
+        # Запрашиваем у пользователя текст для шифрования
+        message = input("Введите текст для шифрования: ")
+
+        # Преобразуем сообщение в байты
+        message_bytes = message.encode('utf-8')
+
+        # Генерируем ключ той же длины, что и байтовое представление сообщения
+        key = os.urandom(len(message_bytes))
+        key_b64 = base64.b64encode(key).decode('utf-8')
+        print("\nСгенерированный ключ (в Base64):\n", key_b64)
+
+        # Сохраняем ключ в файл, если указан путь
+        if args.key_file:
+            if save_to_file(key, args.key_file):
+                print(f"Ключ сохранен в файл: {args.key_file}")
+
+         # Шифруем текст
+        try:Add commentMore actions
+                    encrypted_bytes = encrypt(message, key)
+                    encrypted_b64 = base64.b64encode(encrypted_bytes).decode('utf-8')
+                    print("\nЗашифрованный текст (в Base64):\n", encrypted_b64)
+    
+                    # Сохраняем шифротекст в файл, если указан путь
+                    if args.ciphertext_file:
+                        if save_to_file(encrypted_bytes, args.ciphertext_file):
+                            print(f"Шифротекст сохранен в файл: {args.ciphertext_file}")
+                        
+                    # Проверочная расшифровка
+                    decrypted_text = decrypt(encrypted_bytes, key)
+                    print("\nПроверка расшифровки:\n", decrypted_text)
+                
+                except ValueError as e:
+                    print("\nОшибка при шифровании текста:\n", e)
+    
+            elif args.mode == 'decrypt':
+                # Загружаем ключ
+                key = None
+                if args.key_file:
+                    key = load_from_file(args.key_file)
+                    if key:Add commentMore actions
+                        print(f"Ключ загружен из файла: {args.key_file}")
+
+                 if not key:Add commentMore actions
+                            key_b64 = input("Введите ключ в формате Base64: ")
+                            try:
+                                key = base64.b64decode(key_b64)
+                            except:
+                                print("Ошибка декодирования ключа. Проверьте формат Base64.")
+                                exit(1)
+                
+                        # Загружаем шифротекст
+                        ciphertext = None
+                        if args.ciphertext_file:
+                            ciphertext = load_from_file(args.ciphertext_file)
+                            if ciphertext:Add commentMore actions
+                                print(f"Шифротекст загружен из файла: {args.ciphertext_file}")
+
+                        if not ciphertext:Add commentMore actions
+                                    ciphertext_b64 = input("Введите шифротекст в формате Base64: ")
+                                    try:
+                                        ciphertext = base64.b64decode(ciphertext_b64)
+                                    except:
+                                        print("Ошибка декодирования шифротекста. Проверьте формат Base64.")
+                                        exit(1)
+                        
+                                # Дешифруем текст
+                                try:
+                                    decrypted_text = decrypt(ciphertext, key)
+                                    print("\nРасшифрованный текст:\n", decrypted_text)
+
+                        # Сохраняем расшифрованное сообщение в файл, если указан путьAdd commentMore actions
+                                    if args.message_file:
+                                        if save_to_file(decrypted_text.encode('utf-8'), args.message_file):
+                                            print(f"Расшифрованный текст сохранен в файл: {args.message_file}")
+                                            Add commentMore actions
+                                except ValueError as e:
+                                    print("\nОшибка при расшифровке текста:\n", e)
